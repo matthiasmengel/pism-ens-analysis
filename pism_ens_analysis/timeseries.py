@@ -1,6 +1,6 @@
 import os
 import collections
-# import numpy as np
+import numpy as np
 # import pandas as pd
 import netCDF4 as nc
 import dimarray as da
@@ -44,6 +44,10 @@ def get_timeseries_data(datapath, ts_variables = ["slvol","area_glacierized_shel
 
 def get_timeseries_data2(ensemble_members, ts_file_name="timeseries.nc"):
 
+    """ loop over all ensemble members, check if they have a ts_file_name,
+    read its data and save it to an ordered dictionary.
+    """
+
     ## assume that first entry has all variables
     ncf = nc.Dataset(os.path.join(ensemble_members[0],ts_file_name),"r")
     ts_variables = ncf.variables.keys()
@@ -58,7 +62,7 @@ def get_timeseries_data2(ensemble_members, ts_file_name="timeseries.nc"):
         try:
             ncf = nc.Dataset(os.path.join(em,ts_file_name),"r")
         except IOError:
-            print name, "has no timeseries file, skip"
+            print name, "has no", ts_file_name, "file, skip"
             continue
         try:
             nct = ncf.variables["time"]
@@ -99,16 +103,6 @@ def get_last_common_time(ts_data):
 
     return last_common_time, longest_run_time
 
-
-def get_spatial_variable(fname,varname):
-
-    ncfname = os.path.join(ensemble_base_path,fname)
-    try:
-        ncf = nc.Dataset(ncfname,"r")
-    except IOError as error:
-        print ncfname, "not found."
-        raise error
-    return np.squeeze(ncf.variables[varname])
 
 
 def imshow_variable(fname,varname,**kwargs):
