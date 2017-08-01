@@ -85,6 +85,26 @@ def get_area_errors(score, ncr, refncr, spatial=True):
     score.update(ad)
     return score
 
+
+def get_wais_ungrounded_area(score, ncr, refncr,
+                             wais_latbounds = [-180,-30]):
+
+    wais_latbounds = [-180,-30]
+    lon = np.squeeze(refncr.variables["lon"][:])
+    wais_msk = (lon < wais_latbounds[0]) | (lon > wais_latbounds[1])
+
+    mask = np.squeeze(ncr.variables["mask"][:])
+    refmask = np.squeeze(refncr.variables["mask"][:])
+
+    floating_or_ocean_now_grounded_in_obs = np.ma.masked_array((refmask == 2) &
+            ((mask==3)|(mask==4)),dtype=np.float,mask=wais_msk)
+
+    score.update({"wais_ungrounded":
+        floating_or_ocean_now_grounded_in_obs.sum()})
+
+    return score
+
+
 def collect_scores_to_arrays(measures):
 
     """ this is a kind of resorting: use a dictionary of
@@ -104,10 +124,10 @@ def collect_scores_to_arrays(measures):
     return measure_arrays
 
 
-def normalize_measures(measure_arrays):
+def normalize_scores(measure_arrays):
 
     """ calculate the ensemble mean per measure, and
-    normalize all runs with that ensemble mean, i.e. divide it. """
+        normalize all runs with that ensemble mean, i.e. divide it. """
 
     measure_arrays_mean = [arr.mean() for m,arr in measure_arrays.iteritems()]
 
@@ -125,6 +145,9 @@ def normalize_measures(measure_arrays):
 def collect_scores(ensemble_members, analysis_year, varnames_for_rms,
                    refncr):
 
+    """ run all score measures and collect them in the scores ordered
+    dictionary.
+    """
 
     scores = collections.OrderedDict()
 
@@ -138,7 +161,7 @@ def collect_scores(ensemble_members, analysis_year, varnames_for_rms,
         for varname in varnames_for_rms:
             scores[run] = get_rms_error(scores[run], varname, ncr, refncr, spatial=False)
         scores[run] = get_area_errors(scores[run], ncr, refncr, spatial=False)
-
+        scores[run] = get_wais_ungrounded_area(scores[run], ncr, refncr)
         ncr.close()
 
     return scores
