@@ -1,7 +1,7 @@
 ## PISM-ENS-ANALYSIS
 
 This collection of functions and jupyter notebooks aims at making
-the analysis of PISM simulations in ensembles more convenient.
+the analysis of PISM ensembles more convenient.
 
 ### Usage
 

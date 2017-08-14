@@ -42,47 +42,60 @@ def get_timeseries_data(datapath, ts_variables = ["slvol","area_glacierized_shel
     return ts_data
 
 
+def get_netcdf_as_dataset(spath,ts_file_name):
+
+    """ Read all timeseries variable from ts_file_name
+    into one dimarray Dataset. Handle some errors if it
+    not existent or empty. """
+
+    try:
+        ncf = nc.Dataset(os.path.join(spath,ts_file_name),"r")
+    except IOError as e:
+        print spath, "has no", ts_file_name, "file, skip"
+        raise IOError(spath + " has no "+ ts_file_name)
+
+    try:
+        nct = ncf.variables["time"]
+    except KeyError:
+        print name, "contains no data, skip."
+        raise KeyError(spath+ts_file_name+" contains no data.")
+
+    ts_variables = ncf.variables.keys()
+    ## ignore some variables
+    ts_variables = [var for var in ts_variables if var not in
+                        ["pism_config","run_stats","time_bounds","time"]]
+
+    dataset = {}
+
+    for var in ts_variables:
+        dataset[var] = ncf.variables[var][:]
+
+    dataset = da.Dataset(dataset)
+    ## the following for a nice time axis.
+    datetm = nc.num2date(nct[:],units = nct.units,calendar = nct.calendar)
+    # takes long for long timeseries
+    years = [d.year for d in datetm]
+    dataset.set_axis(years)
+    dataset.rename_axes({"x0":"time"})
+
+    return dataset
+
+
 def get_timeseries_data2(ensemble_members, ts_file_name="timeseries.nc"):
 
     """ loop over all ensemble members, check if they have a ts_file_name,
     read its data and save it to an ordered dictionary.
     """
 
-    ## assume that first entry has all variables
-    ncf = nc.Dataset(os.path.join(ensemble_members[0],ts_file_name),"r")
-    ts_variables = ncf.variables.keys()
-    ## ignore some variables
-    ts_variables = [var for var in ts_variables if var not in
-                        ["pism_config","run_stats","time_bounds","time"]]
-    ncf.close()
-
     ensemble_data = {}
     for em in ensemble_members:
         name = em.split("/")[-1]
         try:
-            ncf = nc.Dataset(os.path.join(em,ts_file_name),"r")
-        except IOError:
-            print name, "has no", ts_file_name, "file, skip"
-            continue
-        try:
-            nct = ncf.variables["time"]
-        except KeyError:
-            print name, "contains no data, skip."
+            ensemble_data[name] = get_netcdf_as_dataset(em,ts_file_name)
+        except (IOError, KeyError) as e:
+            print e
             continue
 
-        ensemble_data[name] = {}
-
-        for var in ts_variables:
-            ensemble_data[name][var] = ncf.variables[var][:]
-        ensemble_data[name] = da.Dataset(ensemble_data[name])
-
-        datetm = nc.num2date(nct[:],units = nct.units,calendar = nct.calendar)
-        # takes long for long timeseries
-        years = [d.year for d in datetm]
-        ensemble_data[name].set_axis(years)
-        ensemble_data[name].rename_axes({"x0":"time"})
-
-    # self.data = ensemble_data
     # keep it ordered
     ensemble_data = collections.OrderedDict(sorted(ensemble_data.items()))
     return ensemble_data
