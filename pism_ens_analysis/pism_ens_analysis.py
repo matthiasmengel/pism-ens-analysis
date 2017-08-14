@@ -107,7 +107,9 @@ def get_wais_ungrounded_area(score, ncr, refncr,
 
 
 def mean_melt_rate_deviation(score, ncr, basins, rignot_bmr_data, basins_for_score,
-                            spatial=False):
+                            spatial=False, absolute_values=False):
+
+    rho_ice = 910. # in kg/m^3
 
     pism_melt_rates = pd.DataFrame(index=rignot_bmr_data.index,
                                    columns=["mean basal melt rate per basin"])
@@ -115,10 +117,17 @@ def mean_melt_rate_deviation(score, ncr, basins, rignot_bmr_data, basins_for_sco
     effshelfbmassflux = np.squeeze(
         ncr.variables['effective_shelf_base_mass_flux'][:])
 
+    mask = np.squeeze(ncr.variables['mask'][:])
+
     # all basins, hardcoded for now
     for basin_id in np.arange(1,20,1):
-        data_basin = np.ma.masked_array(effshelfbmassflux,mask = basins!=basin_id)
-        pism_melt_rates.iloc[basin_id-1] = data_basin.mean()
+        # select only floating ice in basin
+        data_basin = np.ma.masked_array(effshelfbmassflux,
+            mask = np.logical_or(basins!=basin_id, mask!=3) )
+        pism_melt_rates.iloc[basin_id-1] = data_basin.mean()/rho_ice
+
+    if absolute_values:
+        return pism_melt_rates
 
     scorem = (pism_melt_rates - rignot_bmr_data)["mean basal melt rate per basin"]
     # root mean square
