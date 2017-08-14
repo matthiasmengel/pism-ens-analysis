@@ -3,6 +3,7 @@ import os
 import numpy as np
 import netCDF4 as nc
 import collections
+import pandas as pd
 
 
 def get_spatial_variable(fname,varname):
@@ -105,6 +106,31 @@ def get_wais_ungrounded_area(score, ncr, refncr,
     return score
 
 
+def mean_melt_rate_deviation(score, ncr, basins, rignot_bmr_data, basins_for_score,
+                            spatial=False):
+
+    pism_melt_rates = pd.DataFrame(index=rignot_bmr_data.index,
+                                   columns=["mean basal melt rate per basin"])
+
+    effshelfbmassflux = np.squeeze(
+        ncr.variables['effective_shelf_base_mass_flux'][:])
+
+    # all basins, hardcoded for now
+    for basin_id in np.arange(1,20,1):
+        data_basin = np.ma.masked_array(effshelfbmassflux,mask = basins!=basin_id)
+        pism_melt_rates.iloc[basin_id-1] = data_basin.mean()
+
+    scorem = (pism_melt_rates - rignot_bmr_data)["mean basal melt rate per basin"]
+    # root mean square
+    scorem = np.power(scorem.loc[basins_for_score]**2.,0.5)
+
+    if spatial:
+        return scorem
+
+    else:
+        score.update({"basal_melt_per_basin":scorem.sum()})
+        return score
+
 def collect_scores_to_arrays(measures):
 
     """ this is a kind of resorting: use a dictionary of
@@ -143,7 +169,7 @@ def normalize_scores(measure_arrays):
 
 
 def collect_scores(ensemble_members, analysis_year, varnames_for_rms,
-                   refncr):
+                   refncr, basins, rignot_bmr_data, basins_for_score):
 
     """ run all score measures and collect them in the scores ordered
     dictionary.
@@ -155,13 +181,15 @@ def collect_scores(ensemble_members, analysis_year, varnames_for_rms,
         run = em.split("/")[-1]
         print run,
 
-        ncr = nc.Dataset(os.path.join(em,"extra_"+str(analysis_year)+".000.nc"),"r")
+        ncr = nc.Dataset(os.path.join(em,"snapshots_"+str(analysis_year)+".000.nc"),"r")
 
         scores[run] = collections.OrderedDict()
         for varname in varnames_for_rms:
             scores[run] = get_rms_error(scores[run], varname, ncr, refncr, spatial=False)
         scores[run] = get_area_errors(scores[run], ncr, refncr, spatial=False)
         scores[run] = get_wais_ungrounded_area(scores[run], ncr, refncr)
+        scores[run] = mean_melt_rate_deviation(scores[run], ncr, basins, rignot_bmr_data,
+                        basins_for_score)
         ncr.close()
 
     return scores
