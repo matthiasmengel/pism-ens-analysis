@@ -13,17 +13,8 @@ def get_netcdf_as_dataset(ts_file_name):
     into one dimarray Dataset. Handle some errors if it
     not existent or empty. """
 
-    try:
-        ncf = nc.Dataset(ts_file_name,"r")
-    except IOError as e:
-        print spath, "has no", ts_file_name, "file, skip"
-        raise IOError(ts_file_name + "does not exist.")
-
-    try:
-        nct = ncf.variables["time"]
-    except KeyError:
-        print name, "contains no data, skip."
-        raise KeyError(ts_file_name+" contains no data.")
+    ncf = nc.Dataset(ts_file_name,"r")
+    nct = ncf.variables["time"]
 
     ts_variables = ncf.variables.keys()
     ## ignore some variables
@@ -61,9 +52,13 @@ def get_timeseries_data2(ensemble_members, ts_file_pattern="timeseries"):
         available_ts_restart_files = sorted(glob.glob(
             os.path.join(em,ts_file_pattern+"_*nc")))
 
-        # append the timeseries.nc files
-        available_ts_files = available_ts_restart_files + [
-            os.path.join(em,ts_file_pattern+".nc")]
+        # append the timeseries.nc files if available
+        available_ts_files = available_ts_restart_files + \
+            glob.glob(os.path.join(em,ts_file_pattern+".nc"))
+
+        if available_ts_files == []:
+            print "no timeseries files available for", name, ", skip."
+            continue
 
         for ts_file in available_ts_files:
 
