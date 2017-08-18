@@ -79,18 +79,24 @@ def get_area_errors(score, ncr, refncr, spatial=True):
     ad["grounded_now_not_in_obs"] = np.array((refmask != 2) &
          (mask ==2),dtype=np.float)
 
-    if not spatial:
+    if spatial:
+        return ad
+    else:
         for name, measure in ad.iteritems():
             ad[name] = measure.sum()
-
-    score.update(ad)
-    return score
+        score.update(ad)
+        return score
 
 
 def get_wais_ungrounded_area(score, ncr, refncr,
                              wais_latbounds = [-180,-30]):
 
-    wais_latbounds = [-180,-30]
+    """ This is a good measure for detecting collapsed WAIS states,
+        but it is not necessarily a good measure to define a good
+        (stable) WAIS. This is because it does not take into
+        account when new areas ground that should not.
+    """
+
     lon = np.squeeze(refncr.variables["lon"][:])
     wais_msk = (lon < wais_latbounds[0]) | (lon > wais_latbounds[1])
 
