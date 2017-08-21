@@ -4,6 +4,7 @@ import numpy as np
 import netCDF4 as nc
 import collections
 import pandas as pd
+import glob
 
 
 def get_spatial_variable(fname,varname):
@@ -183,8 +184,9 @@ def normalize_scores(measure_arrays):
 
 
 
-def collect_scores(ensemble_members, analysis_year, varnames_for_rms,
-                   refncr, basins, rignot_bmr_data, basins_for_score):
+def collect_scores(ensemble_members, varnames_for_rms,
+                   refncr, basins, rignot_bmr_data, basins_for_score,
+                   fixed_analysis_year=None):
 
     """ run all score measures and collect them in the scores ordered
     dictionary.
@@ -196,7 +198,11 @@ def collect_scores(ensemble_members, analysis_year, varnames_for_rms,
         run = em.split("/")[-1]
         print run,
 
-        ncr = nc.Dataset(os.path.join(em,"snapshots_"+str(analysis_year)+".000.nc"),"r")
+        if fixed_analysis_year != None:
+            ncr = nc.Dataset(os.path.join(em,"snapshots_"+str(fixed_analysis_year)+".000.nc"),"r")
+        else:
+            analysis_year = get_last_snap_year(em, pattern="snapshots_")
+            ncr = nc.Dataset(os.path.join(em,"snapshots_"+str(analysis_year)+".000.nc"),"r")
 
         scores[run] = collections.OrderedDict()
         for varname in varnames_for_rms:
@@ -208,3 +214,12 @@ def collect_scores(ensemble_members, analysis_year, varnames_for_rms,
         ncr.close()
 
     return scores
+
+
+def get_last_snap_year(ensemble_member, pattern="snapshots_"):
+
+    all_files = sorted(glob.glob(os.path.join(
+        ensemble_member,pattern+"[0-9]*")))
+
+    last_avail_year = all_files[-1].split(pattern)[-1].split(".000.nc")[0]
+    return int(last_avail_year)
