@@ -50,7 +50,7 @@ def get_timeseries_data2(ensemble_members, ts_file_pattern="timeseries"):
         name = em.split("/")[-1]
         # these are the files like timeseries_308000.nc from restarts
         available_ts_restart_files = sorted(glob.glob(
-            os.path.join(em,ts_file_pattern+"_*nc")))
+            os.path.join(em,ts_file_pattern+"_[0-9]*nc")))
 
         # append the timeseries.nc files if available
         available_ts_files = available_ts_restart_files + \
