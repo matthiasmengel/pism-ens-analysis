@@ -223,3 +223,18 @@ def get_last_snap_year(ensemble_member, pattern="snapshots_"):
 
     last_avail_year = all_files[-1].split(pattern)[-1].split(".000.nc")[0]
     return int(last_avail_year)
+
+def get_performance_stats(nc_file):
+
+    """ get some statistics on the runs,
+     works for example for extra files."""
+
+    ncf = nc.Dataset(nc_file,"r")
+    processor_hours = ncf.variables["run_stats"].processor_hours
+    wall_clock_hours = ncf.variables["run_stats"].wall_clock_hours
+    model_years_per_processor_hour = ncf.variables[
+        "run_stats"].model_years_per_processor_hour
+    ncf.close()
+
+    return np.array([processor_hours, wall_clock_hours,
+                     model_years_per_processor_hour])
