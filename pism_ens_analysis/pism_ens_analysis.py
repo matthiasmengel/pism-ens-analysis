@@ -57,6 +57,79 @@ def get_rms_error(score, varname, ncr, refncr, spatial=True):
     return score
 
 
+def get_rms_error_in_basin(varname, mask_other_basins, ncr, refncr, spatial=False,
+                          floating_grounded=False):
+
+    """ get the root mean square error between variable and
+    refvariable for a certain basin. Get the sum of the rms for
+    grounded+floating, and grounded and floating alone.
+    mask=2 is grounded,
+    mask=3 is floating,
+    mask=4 is ocean in pism mask.
+    Input:
+        mask_other_basins: this is a mask where all regions that
+        should not be considered have the value 1, region to be considered 0.
+    """
+
+    variable = np.squeeze(ncr.variables[varname][:])
+    pism_mask = np.squeeze(ncr.variables["mask"][:])
+    refvariable = np.squeeze(refncr.variables[varname][:])
+
+    variable = np.ma.array(variable,mask=mask_other_basins)
+
+    rms = np.sqrt((variable-refvariable)**2.)
+
+    ## do not count where now is ocean (could have been icy in ref)
+    ## FIXME: is this a reasonable decision?
+    rms[pism_mask==4] = 0.
+
+    if spatial:
+        return rms
+
+    rms_error_sums = {"rms_"+varname:rms.sum()}
+
+    if floating_grounded:
+        rms_floating = np.array(rms, copy=True)
+        rms_floating[pism_mask==2] = 0.
+
+        rms_grounded = np.array(rms, copy=True)
+        rms_grounded[pism_mask==3] = 0.
+
+        rms_error_sums["rms_"+varname+"_grounded"] = rms_grounded.sum()
+        rms_error_sums["rms_"+varname+"_floating"] = rms_floating.sum()
+
+    # ensure same order for all dicts
+#     score.update((sorted(rms_error_sums.items())))
+    return rms_error_sums
+
+
+def get_rms_for_experiments(varname, refncr, experiments, filepattern, mask_other_basins):
+
+    """ use the get_rms_in_basin function for a set of experiments.
+        Collect into data frame.
+    """
+
+    df_rms = pd.DataFrame()
+
+    for exp in experiments:
+        print exp
+
+        ncfiles = sorted(glob.glob(os.path.join(exp,filepattern)))
+
+        for i, fl in enumerate(ncfiles):
+
+            expncr = nc.Dataset(fl,"r")
+            rms_error = get_rms_error_in_basin(varname, mask_other_basins, expncr, refncr, spatial=False)
+            expncr.close()
+            yr = fl.split("extra_")[1][0:4]
+            print yr,
+            df_rms.loc[int(yr),exp.split("/")[-1]] = rms_error["rms_thk"]
+
+        print ""
+
+    return df_rms
+
+
 def get_area_errors(score, ncr, refncr, spatial=True):
 
     """ find difference in areas of floating and observed,
