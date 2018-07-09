@@ -123,7 +123,7 @@ def get_rms_for_experiments(varname, refncr, experiments, filepattern, mask_othe
             expncr.close()
             yr = fl.split("extra_")[1][0:4]
             print yr,
-            df_rms.loc[int(yr),exp.split("/")[-1]] = rms_error["rms_thk"]
+            df_rms.loc[int(yr),exp.split("/")[-1]] = rms_error["rms_"+varname]
 
         print ""
 
