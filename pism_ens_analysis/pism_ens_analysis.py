@@ -139,6 +139,41 @@ def get_sum_per_basin(field, basins, basin_range="all",
     return sum_per_basin
 
 
+def get_area_errors(pism_mask, bedm_mask):
+
+    """ find difference in areas of floating and observed,
+        between pism_mask and bedm_mask.
+        we use np.isclose as the bedmap mask deviates from
+        integer by interpolation. default tolerance is 1e-5
+        in pism:
+        mask=2 is grounded ice,
+        mask=3 is floating ice,
+        mask=4 is ocean.
+        in bedm_mask:
+        mask=2 is ocean
+        mask=1 is floating ice
+        mask=0 is grounded ice
+        """
+
+    ad = collections.OrderedDict()
+
+    ad["floating_in_obs_now_not"] = np.array((np.isclose(bedm_mask,1)) &
+        (pism_mask !=3),dtype=np.float)
+    ad["floating_now_not_in_obs"] = np.array(~(np.isclose(bedm_mask,1)) &
+        (pism_mask ==3),dtype=np.float)
+
+    ad["grounded_in_obs_now_not"] = np.array((np.isclose(bedm_mask,0)) &
+         (pism_mask !=2),dtype=np.float)
+    ad["grounded_now_not_in_obs"] = np.array(~(np.isclose(bedm_mask,0)) &
+         (pism_mask ==2),dtype=np.float)
+
+    ad["floating_area_error"] = ad["floating_in_obs_now_not"] + \
+        ad["floating_now_not_in_obs"]
+
+    ad["grounded_area_error"] = ad["grounded_in_obs_now_not"] + \
+        ad["grounded_now_not_in_obs"]
+
+    return ad
 
 
 ## outdated code below. to be removed.
@@ -254,38 +289,6 @@ def get_rms_for_experiments(varname, refncr, experiments, filepattern, mask_othe
         print ""
 
     return df_rms
-
-
-def get_area_errors(score, ncr, refncr, spatial=True):
-
-    """ find difference in areas of floating and observed,
-        between mask and refmask. sum the erros if spatial=False.
-        mask=2 is grounded,
-        mask=3 is floating,
-        mask=4 is ocean. """
-
-    ad = collections.OrderedDict()
-
-    mask = np.squeeze(ncr.variables["mask"][:])
-    refmask = np.squeeze(refncr.variables["mask"][:])
-
-    ad["floating_in_obs_now_not"] = np.array((refmask == 3) &
-        (mask !=3),dtype=np.float)
-    ad["floating_now_not_in_obs"] = np.array((refmask != 3) &
-        (mask ==3),dtype=np.float)
-
-    ad["grounded_in_obs_now_not"] = np.array((refmask == 2) &
-         (mask !=2),dtype=np.float)
-    ad["grounded_now_not_in_obs"] = np.array((refmask != 2) &
-         (mask ==2),dtype=np.float)
-
-    if spatial:
-        return ad
-    else:
-        for name, measure in ad.iteritems():
-            ad[name] = measure.sum()
-        score.update(ad)
-        return score
 
 
 def get_wais_ungrounded_area(score, ncr, refncr,
