@@ -17,6 +17,56 @@ def get_spatial_variable(fname,varname):
     return np.squeeze(ncf.variables[varname])
 
 
+def get_pism_data(pismfile,variables):
+
+    """ get several variables at once """
+
+    ncf = nc.Dataset(pismfile,"r")
+    pism_data = {}
+    for var in variables:
+        pism_data[var] = np.squeeze(ncf.variables[var][:])
+    ncf.close()
+
+    return pism_data
+
+
+def get_data_on_maskval_above_threshold(data, mask, maskval, threshold):
+
+    """ create a field that is nonly nonzero where mask==maskval
+        field larger then threshold. Return this field.
+        This function is useful, for example, to extract grounded velocities
+        that are larger than X meter per year.
+    """
+
+    threshdata = data.copy()
+    # use isclose because of rounding errors during regridding
+    threshdata[~np.isclose(mask,maskval)] = 0.
+    threshdata[threshdata < threshold] = 0.
+    return threshdata
+
+
+def get_rms_per_basin(rms_field, basins, rms_name, basin_range="all",
+                     weigh_by_size=False):
+
+    """ loop over basins from basin_range and sum up the rms_field cells
+        in each basin. write this sum to a pandas datafram and return.
+        you can weigh the sum by the number of basin grid cells.
+    """
+
+    if basin_range=="all":
+        basin_range = np.arange(1,basins.max()+1)
+
+    rms_per_basin = pd.DataFrame(columns=basin_range)
+
+    for bs in basin_range:
+        rms_per_basin.loc[rms_name,bs] = rms_field[bs==basins].sum()
+
+        if weigh_by_size:
+            rms_per_basin.loc[rms_name,bs] /= (basins==bs).sum()
+
+    return rms_per_basin
+
+
 def get_rms_error(score, varname, ncr, refncr, spatial=True):
 
     """ get the root mean square error between variable and
