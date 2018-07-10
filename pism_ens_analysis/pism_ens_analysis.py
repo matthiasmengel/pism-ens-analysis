@@ -9,6 +9,8 @@ import glob
 
 def get_spatial_variable(fname,varname):
 
+    """ get one pism variable """
+
     try:
         ncf = nc.Dataset(fname,"r")
     except IOError as error:
@@ -17,17 +19,87 @@ def get_spatial_variable(fname,varname):
     return np.squeeze(ncf.variables[varname])
 
 
-def get_pism_data(pismfile,variables):
+def get_spatial_variables(ncfile,variables):
 
     """ get several variables at once """
 
-    ncf = nc.Dataset(pismfile,"r")
-    pism_data = {}
+    ncf = nc.Dataset(ncfile,"r")
+    nc_data = {}
     for var in variables:
-        pism_data[var] = np.squeeze(ncf.variables[var][:])
+        nc_data[var] = np.squeeze(ncf.variables[var][:])
     ncf.close()
 
-    return pism_data
+    return nc_data
+
+
+def return_hashes_with_paramval(ensemble_table, param, value):
+
+    """ select ensemble member hashes that belong to a certain parameter
+        value and return these hashes
+    """
+
+    hashes = ensemble_table[ensemble_table[param] == value].index
+
+    return hashes
+
+
+def get_reference_data(input_root_dir, grid_id):
+
+    """ get data from input_root_dir with grid_id.
+        uses standard file structure from github.com/pism/pism-ais
+
+    """
+    rignot_vel_file = os.path.join(input_root_dir,"rignotvel","rignotvel_"+grid_id+".nc")
+    bedmap2_file = os.path.join(input_root_dir,"bedmap2","bedmap2_"+grid_id+".nc")
+    zwally_basin_file = os.path.join(input_root_dir,"zwally_basins","zwally_basins_"+grid_id+".nc")
+
+    rignc = nc.Dataset(rignot_vel_file,"r")
+    bedmnc = nc.Dataset(bedmap2_file,"r")
+    zwallync = nc.Dataset(zwally_basin_file,"r")
+
+    bedm_mask = bedmnc.variables["mask"][:]
+    bedm_thk = bedmnc.variables["thk"][:]
+    bedm_thk_grounded = np.ma.array(bedm_thk,mask=bedm_mask!=0)
+
+    basins = zwallync.variables["basins"][:]
+
+    # swap orientation
+    rignot_velsurf_mag = rignc.variables["v_magnitude"][::-1,:]
+    # simplify velocities, set masked areas at the domain boundaries to zero.
+    msk = rignot_velsurf_mag.mask
+    rignot_velsurf_mag = np.array(rignot_velsurf_mag)
+    rignot_velsurf_mag[msk] = 0.
+
+    rignc.close()
+    bedmnc.close()
+    zwallync.close()
+
+    return bedm_mask, bedm_thk, bedm_thk_grounded, basins, rignot_velsurf_mag
+
+
+def get_run_with_val(tsdata, variable, year, func=np.min):
+
+    """ from the ensemble of timeseries tsdata and certain variable
+        and year, get the run that fulfills run == func(run)
+        func could be np.min, np.max, np.median
+        example:
+            get_run_with_val(tsdata, "slvol", 2800)
+        gives you the ensemble member that has minimum sea level volume
+        in year 2800.
+    """
+
+    slarr = np.array([])
+    keys = []
+
+    for em in tsdata:
+        try:
+            slarr = np.append(slarr,tsdata[em][variable][year])
+            keys.append(em)
+        except IndexError:
+            continue
+
+    run =  keys[np.where(slarr==func(slarr))[0][0]]
+    return run, tsdata[run][variable][year]
 
 
 def get_data_on_maskval_above_threshold(data, mask, maskval, threshold):
@@ -45,10 +117,10 @@ def get_data_on_maskval_above_threshold(data, mask, maskval, threshold):
     return threshdata
 
 
-def get_rms_per_basin(rms_field, basins, rms_name, basin_range="all",
+def get_sum_per_basin(field, basins, basin_range="all",
                      weigh_by_size=False):
 
-    """ loop over basins from basin_range and sum up the rms_field cells
+    """ loop over basins from basin_range and sum up the cells
         in each basin. write this sum to a pandas datafram and return.
         you can weigh the sum by the number of basin grid cells.
     """
@@ -56,16 +128,20 @@ def get_rms_per_basin(rms_field, basins, rms_name, basin_range="all",
     if basin_range=="all":
         basin_range = np.arange(1,basins.max()+1)
 
-    rms_per_basin = pd.DataFrame(columns=basin_range)
+    sum_per_basin = pd.Series(index=basin_range)
 
     for bs in basin_range:
-        rms_per_basin.loc[rms_name,bs] = rms_field[bs==basins].sum()
+        sum_per_basin.loc[bs] = field[bs==basins].sum()
 
         if weigh_by_size:
-            rms_per_basin.loc[rms_name,bs] /= (basins==bs).sum()
+            sum_per_basin.loc[bs] /= (basins==bs).sum()
 
-    return rms_per_basin
+    return sum_per_basin
 
+
+
+
+## outdated code below. to be removed.
 
 def get_rms_error(score, varname, ncr, refncr, spatial=True):
 
