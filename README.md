@@ -1,16 +1,20 @@
 ## PISM-ENS-ANALYSIS
 
 This collection of functions and jupyter notebooks aims at making
-the analysis of PISM ensembles more convenient.
+the analysis of PISM ensembles more convenient. Main functions are
+in `pism_ens_analysis/pism_ens_analysis.py`. 
 
 ### Usage
 
 Have a look to the example folder, try out the jupyter notebooks.
 
-### Setup
-Edit `config.py` so that they fit your needs.
+Start with [get_ensemble_indicators.ipynb](examples/get_ensemble_indicators.ipynb).
 
-Fire up a notebook on the machine that hosts the PISM files.
+For more analyses, look at [indicator_dependencies.ipynb](indicator_dependencies.ipynb).
+
+### Starting jupyter notebooks from cluster
+
+You would like to fire up a notebook on the machine that hosts the PISM files.
 On your local machine, this would just be:
 
 ```jupyter notebook```
