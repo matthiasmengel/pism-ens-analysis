@@ -5,6 +5,8 @@ import netCDF4 as nc
 import collections
 import pandas as pd
 import glob
+import matplotlib.pylab as plt
+import scipy.ndimage
 
 
 def get_spatial_variable(fname,varname):
@@ -174,6 +176,47 @@ def get_area_errors(pism_mask, bedm_mask):
         ad["grounded_now_not_in_obs"]
 
     return ad
+
+
+def get_grounding_line_deviaton_per_basin(pism_mask, distance_to_observed_gl,
+    basins, basin_range="all"):
+
+    glmask = pism_mask.copy()
+    glmask[glmask <= 2] = -1
+    glmask[glmask > 2] = 1
+
+    if basin_range=="all":
+        basin_range = np.arange(1,basins.max()+1)
+
+    gl_per_basin = pd.Series(index=basin_range)
+
+    for bs in basin_range:
+        # grounding line is extracted from contour plot
+        cs = plt.contour(np.ma.masked_array(glmask,mask=(bs==basins)),[0.0],colors='r',linewidth=1)
+
+        #calculate mean along the grounding line(s)
+        mean_dist_gl = 0
+        cnt_p = 0
+
+        for p in cs.collections[0].get_paths()[:]:
+            v = p.vertices
+            cx = v[:,0]
+            cy = v[:,1]
+            lenc=len(cx)
+            cnt_p += lenc
+            diffdistint = scipy.ndimage.map_coordinates(distance_to_observed_gl, [cy, cx], order=1)
+
+            for i in xrange(lenc):
+                mean_dist_gl += (diffdistint[i])**2
+
+        mean_dist_gl=mean_dist_gl/cnt_p
+
+        mean_dist_gl = np.sqrt(mean_dist_gl)
+        printline='\nTOTGL (rmse GL distance in km)'
+
+        gl_per_basin.loc[bs] = mean_dist_gl
+
+    return gl_per_basin
 
 
 ## outdated code below. to be removed.
