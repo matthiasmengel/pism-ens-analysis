@@ -233,10 +233,8 @@ def get_grounding_line_deviaton_per_basin(pism_mask, distance_to_observed_gl, ba
 
     for bs in basin_range:
 
-        # grounding line is extracted from contour plot
-#         cs = plt.contour(np.ma.masked_array(glmask,mask=(bs==basins)),[0.0],colors='r',linewidth=1)
+        glmask_basin = np.ma.masked_array(glmask,mask=(bs!=basins))
 
-        glmask_basin = np.ma.masked_array(glmask,mask=(bs==basins))
         x, y = np.mgrid[:glmask_basin.shape[0], :glmask_basin.shape[1]]
         c = cntr.Cntr(x, y, glmask_basin)
 
@@ -251,51 +249,19 @@ def get_grounding_line_deviaton_per_basin(pism_mask, distance_to_observed_gl, ba
         # use only longest segment. this should be Antarctic continent.
         segment = sorted(segments, key= len)[-1]
 
-        v = segment
-        cx = v[:,0]
-        cy = v[:,1]
-        lenc=len(cx)
-        cnt_p = lenc
-        diffdistint = scipy.ndimage.map_coordinates(distance_to_observed_gl, [cy, cx], order=1)
+        diffdistint = scipy.ndimage.map_coordinates(distance_to_observed_gl,
+            [segment[:,1], segment[:,0]], order=1)
+
         # square root error
         diffdistint = np.sqrt((diffdistint**2.).sum())
-#         for i in xrange(lenc):
-#             mean_dist_gl += (diffdistint[i])**2
 
-#         mean_dist_gl=mean_dist_gl/cnt_p
-
-
-
-#         diffdistint = scipy.ndimage.map_coordinates(distanceobs, [cy, cx], order=1)
-
-#         #calculate mean along the grounding line(s)
-#         mean_dist_gl = 0
-#         cnt_p = 0
-
-
-
-#         for p in cs.collections[0].get_paths()[:]:
-#             v = p.vertices
-#             cx = v[:,0]
-#             cy = v[:,1]
-#             lenc=len(cx)
-#             cnt_p += lenc
-#             diffdistint = scipy.ndimage.map_coordinates(distanceobs, [cy, cx], order=1)
-
-#             for i in xrange(lenc):
-#                 mean_dist_gl += (diffdistint[i])**2
-
-#         mean_dist_gl=mean_dist_gl/cnt_p
-
-#         mean_dist_gl = np.sqrt(mean_dist_gl)
-#         printline='\nTOTGL (rmse GL distance in km)'
-
-        gl_per_basin.loc[bs] = diffdistint/cnt_p
+        # weigh by number of points of grounding line
+        gl_per_basin.loc[bs] = diffdistint/segment.shape[0]
 
     return gl_per_basin, segment
 
 
-## outdated code below. to be removed.
+#### outdated code below. to be removed.
 
 def get_rms_error(score, varname, ncr, refncr, spatial=True):
 
