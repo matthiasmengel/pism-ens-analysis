@@ -204,22 +204,26 @@ def get_grounding_line_deviaton(pism_mask, distance_to_observed_gl, basins, basi
 
     gl_per_basin = pd.Series(index=basin_range)
 
-    gl_per_basin.loc["total"] = gldist.sum()/(gldist > 0).sum()
+    def weighted_gl_devi(gldist):
+
+        # measure of grounding line deviation
+        # square-root sum of distances divided by number of grounding line points
+        return np.sqrt((gldist**2.).sum())/(gldist > 0).sum()
+
+    gl_per_basin.loc["total"] = weighted_gl_devi(gldist)
 
     for bs in basin_range:
 
         gldist_basin = np.ma.masked_array(gldist,mask=(bs!=basins))
-
-        # measure of grounding line deviation in basin
-        # sum of distances divided by number of grounding line points
-        gl_per_basin.loc[bs] = gldist_basin.sum()/(gldist_basin > 0).sum()
+        gl_per_basin.loc[bs] = weighted_gl_devi(gldist_basin)
 
     return gl_per_basin
 
+
 def get_distance_to_observed_gl(bedm_mask, resolution):
-    
+
     """ TODO: make this function aware of bedm_mask resolution."""
-	
+
 
     # format observation mask
     glmaskobs = bedm_mask.copy()
