@@ -5,10 +5,7 @@ import netCDF4 as nc
 import collections
 import pandas as pd
 import glob
-# import matplotlib.pylab as plt
-from matplotlib import _cntr as cntr
-import scipy.ndimage
-
+from skimage import measure
 
 
 def get_spatial_variable(fname,varname):
@@ -179,48 +176,9 @@ def get_area_errors(pism_mask, bedm_mask):
 
     return ad
 
-# def get_grounding_line_deviaton_per_basin_old(pism_mask, distance_to_observed_gl,
-#     basins, basin_range="all"):
-
-#     glmask = pism_mask.copy()
-#     glmask[glmask <= 2] = -1
-#     glmask[glmask > 2] = 1
-
-#     if basin_range=="all":
-#         basin_range = np.arange(1,basins.max()+1)
-
-#     gl_per_basin = pd.Series(index=basin_range)
-
-#     for bs in basin_range:
-#         # grounding line is extracted from contour plot
-#         cs = plt.contour(np.ma.masked_array(glmask,mask=(bs==basins)),[0.0],colors='r',linewidth=1)
-
-#         #calculate mean along the grounding line(s)
-#         mean_dist_gl = 0
-#         cnt_p = 0
-
-#         for p in cs.collections[0].get_paths()[:]:
-#             v = p.vertices
-#             cx = v[:,0]
-#             cy = v[:,1]
-#             lenc=len(cx)
-#             cnt_p += lenc
-#             diffdistint = scipy.ndimage.map_coordinates(distance_to_observed_gl, [cy, cx], order=1)
-
-#             for i in xrange(lenc):
-#                 mean_dist_gl += (diffdistint[i])**2
-
-#         mean_dist_gl=mean_dist_gl/cnt_p
-
-#         mean_dist_gl = np.sqrt(mean_dist_gl)
-#         printline='\nTOTGL (rmse GL distance in km)'
-
-#         gl_per_basin.loc[bs] = mean_dist_gl
-
-#     return gl_per_basin
 
 
-def get_grounding_line_deviaton_per_basin(pism_mask, distance_to_observed_gl, basins, basin_range="all"):
+def get_grounding_line_deviaton(pism_mask, distance_to_observed_gl, basins, basin_range="all"):
 
     glmask = pism_mask.copy()
     glmask[glmask <= 2] = -1
@@ -229,36 +187,34 @@ def get_grounding_line_deviaton_per_basin(pism_mask, distance_to_observed_gl, ba
     if basin_range=="all":
         basin_range = np.arange(1,basins.max()+1)
 
+    # Find contours at a constant value of 0.9
+    contours = measure.find_contours(glmask, 0.0)
+
+    # largest contour: continental Antarctica
+    contour = sorted(contours, key=len)[-1]
+
+    # create indices to access 2d distance_to_observed_gl
+    indices = np.array(contour,dtype=np.int)
+    # only have each cell once
+    indices = np.unique(indices,axis=0)
+
+    gldist = np.zeros_like(distance_to_observed_gl)
+    gldist[indices[:,0],indices[:,1]] = distance_to_observed_gl[indices[:,0],indices[:,1]]
+
     gl_per_basin = pd.Series(index=basin_range)
+
+    gl_per_basin.loc["total"] = gldist.sum()/(gldist > 0).sum()
 
     for bs in basin_range:
 
-        glmask_basin = np.ma.masked_array(glmask,mask=(bs!=basins))
+        gldist_basin = np.ma.masked_array(gldist,mask=(bs!=basins))
 
-        x, y = np.mgrid[:glmask_basin.shape[0], :glmask_basin.shape[1]]
-        c = cntr.Cntr(x, y, glmask_basin)
+        # measure of grounding line deviation in basin
+        # sum of distances divided by number of grounding line points
+        gl_per_basin.loc[bs] = gldist_basin.sum()/(gldist_basin > 0).sum()
 
-        # trace a contour at z == 0.0
-        res = c.trace(0.0)
+    return gl_per_basin
 
-        # result is a list of arrays of vertices and path codes
-        # (see docs for matplotlib.path.Path)
-        nseg = len(res) // 2
-        segments, codes = res[:nseg], res[nseg:]
-
-        # use only longest segment. this should be Antarctic continent.
-        segment = sorted(segments, key= len)[-1]
-
-        diffdistint = scipy.ndimage.map_coordinates(distance_to_observed_gl,
-            [segment[:,1], segment[:,0]], order=1)
-
-        # square root error
-        diffdistint = np.sqrt((diffdistint**2.).sum())
-
-        # weigh by number of points of grounding line
-        gl_per_basin.loc[bs] = diffdistint/segment.shape[0]
-
-    return gl_per_basin, segment
 
 
 #### outdated code below. to be removed.
