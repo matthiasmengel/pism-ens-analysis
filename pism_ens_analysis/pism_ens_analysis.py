@@ -5,6 +5,7 @@ import netCDF4 as nc
 import collections
 import pandas as pd
 import glob
+import skfmm
 from skimage import measure
 
 
@@ -215,6 +216,19 @@ def get_grounding_line_deviaton(pism_mask, distance_to_observed_gl, basins, basi
 
     return gl_per_basin
 
+def get_distance_to_observed_gl(bedm_mask, resolution):
+    
+    """ TODO: make this function aware of bedm_mask resolution."""
+	
+
+    # format observation mask
+    glmaskobs = bedm_mask.copy()
+    glmaskobs[glmaskobs <= 0] = -1
+    glmaskobs[glmaskobs > 0] = 1
+    # calculate distance to the grounding line
+    # skffm calculates distance to the zero contour line
+    distanceobs = skfmm.distance(glmaskobs)*resolution #km
+    return distanceobs
 
 
 #### outdated code below. to be removed.
