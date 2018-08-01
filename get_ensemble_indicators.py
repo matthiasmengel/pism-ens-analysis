@@ -47,17 +47,23 @@ distance_to_observed_gl = ea.get_distance_to_observed_gl(bedm_mask, resolution)
 # main functionality: get the quality indicators for each run.
 
 def get_ens_indicator(experiment, year):
-    ensemble_indicator = pd.Series()
+
+    ensemble_indicator = pd.Series(index = [
+                                   'Amundsen Stream Velocity', 'Ross Stream Velocity',
+       'Amundsen Thk Anomaly', 'Ross Thk Anomaly', 'Total Grounded Area',
+       'Total Floating Area', 'Amundsen Grounded Area',
+       'Amundsen Floating Area', 'Ross Grounded Area', 'Total Grounding Line',
+       'Amundsen Grounding Line', 'Ross Grounding Line'])
 
     ehash = experiment.split("_")[-1]
-    print(ehash, year)
+    print (ehash, year)
 
     try:
         pism_data = ea.get_spatial_variables(
                 os.path.join(experiment,"extra_"+str(year)+".000.nc"),["velsurf_mag","thk","mask"])
     except IOError as error:
-        print(error)
-        return 1
+        print (error)
+        return ehash, year, ensemble_indicator
 
     pismvel_above100 = ea.get_data_on_maskval_above_threshold(
         pism_data["velsurf_mag"], bedm_mask, 0, 100)
@@ -113,16 +119,24 @@ def get_ens_indicator(experiment, year):
     ensemble_indicator.loc["Ross Grounding Line"] = \
         gl_deviation.loc[12]
 
-    return ensemble_indicator
+    return ehash, year, ensemble_indicator
 
 
 if __name__ == "__main__":
 
-    years = np.arange(2100,2850,50)
-    e = experiments[0]
+    years = np.arange(2100,2900,50)
+
     start = time.perf_counter()
-    joblib.Parallel(n_jobs=20)(
-    joblib.delayed(get_ens_indicator)(e, y) for y in years for e in experiments[0:5])
+    ensemble_indicators_par = joblib.Parallel(n_jobs=28)(
+        joblib.delayed(get_ens_indicator)(e, y) for e in experiments[0:] for y in years)
     print("elapsed time",time.perf_counter()-start)
+
+    ensemble_indicators = pd.DataFrame(
+        {(el[0], el[1]): el[2] for el in ensemble_indicators_par}).T
+
+    ensemble_indicators.index.names = ["ehash", "year"]
+    ensemble_indicators.columns.names = ["indicator"]
+    ensemble_indicators.to_csv(os.path.join("data/",ensemble_id+"_allyears.csv"))
+
 
 
