@@ -5,8 +5,8 @@ import netCDF4 as nc
 import collections
 import pandas as pd
 import glob
-import skfmm
 from skimage import measure
+import skfmm
 
 
 def get_spatial_variable(fname,varname):
@@ -16,7 +16,7 @@ def get_spatial_variable(fname,varname):
     try:
         ncf = nc.Dataset(fname,"r")
     except IOError as error:
-        print fname, "not found."
+        print (fname, "not found.")
         raise error
     return np.squeeze(ncf.variables[varname])
 
@@ -332,7 +332,7 @@ def get_rms_for_experiments(varname, refncr, experiments, filepattern, mask_othe
     df_rms = pd.DataFrame()
 
     for exp in experiments:
-        print exp
+        print (exp)
 
         ncfiles = sorted(glob.glob(os.path.join(exp,filepattern)))
 
@@ -342,10 +342,10 @@ def get_rms_for_experiments(varname, refncr, experiments, filepattern, mask_othe
             rms_error = get_rms_error_in_basin(varname, mask_other_basins, expncr, refncr, spatial=False)
             expncr.close()
             yr = fl.split("extra_")[1][0:4]
-            print yr,
+            print (yr),
             df_rms.loc[int(yr),exp.split("/")[-1]] = rms_error["rms_"+varname]
 
-        print ""
+        print ("")
 
     return df_rms
 
@@ -457,7 +457,7 @@ def collect_scores(ensemble_members, varnames_for_rms,
 
     for em in ensemble_members:
         run = em.split("/")[-1]
-        print run,
+        print (run,)
 
         if fixed_analysis_year != None:
             ncr = nc.Dataset(os.path.join(em,"snapshots_"+str(fixed_analysis_year)+".000.nc"),"r")
