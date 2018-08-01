@@ -121,8 +121,8 @@ if __name__ == "__main__":
     years = np.arange(2100,2850,50)
     e = experiments[0]
     start = time.perf_counter()
-    joblib.Parallel(n_jobs=40)(
-    joblib.delayed(get_ens_indicator)(e, y) for y in years for e in experiments[0:2])
+    joblib.Parallel(n_jobs=20)(
+    joblib.delayed(get_ens_indicator)(e, y) for y in years for e in experiments[0:5])
     print("elapsed time",time.perf_counter()-start)
 
 
