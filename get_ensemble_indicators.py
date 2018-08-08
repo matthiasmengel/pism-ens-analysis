@@ -15,11 +15,6 @@ import collections
 import importlib
 import time
 
-import psutil
-p = psutil.Process()
-print(p.cpu_affinity())
-
-
 # our custom imports
 import settings as s; importlib.reload(s)
 # import pism_ens_analysis.timeseries as ts; importlib.reload(ts)
