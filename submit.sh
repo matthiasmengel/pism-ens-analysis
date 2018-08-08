@@ -1,13 +1,13 @@
 #!/bin/bash
 
 #@ job_name = smuc_$(cluster)_$(stepid)
-#@ class = test
+#@ class = micro
 #@ group = pn69ru
 #@ notify_user = mengel@pik-potsdam.de
 #@ job_type = MPICH
 #@ output = ./loadl.out
 #@ error  = ./loadl.err
-#@ wall_clock_limit = 47:59:00
+#@ wall_clock_limit = 1:59:00
 #@ notification=always
 #@ network.MPI = sn_all,not_shared,us
 #@ node = 1

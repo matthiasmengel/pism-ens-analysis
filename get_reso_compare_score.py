@@ -7,6 +7,7 @@ import collections
 import importlib
 import time
 import itertools
+import logging
 
 # our custom imports
 import settings as s; importlib.reload(s)
@@ -24,7 +25,9 @@ experiments = glob.glob(os.path.join(data_path, ensemble_id_a+"_*"))
 
 def get_comparison(ehash_a, ehash_b, year):
 
-    print("compare",ehash_a,"to",ehash_b)
+    logger = logging.getLogger('get_reso_compare')
+    logger.info("do_comparison")
+    logger.warning("compare %s to %s",ehash_a,ehash_b)
 
     file_a = os.path.join(data_path,
         ensemble_id_a+"_"+ehash_a,"extra_"+str(year)+".000.nc")
@@ -54,11 +57,18 @@ if __name__ == "__main__":
 
     start = time.perf_counter()
 
+    logger = logging.getLogger('get_reso_compare')
+    fh = logging.FileHandler('test.log')
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+    # logger.basicConfig(filename='get_reso_compare_score.log',level=logging.DEBUG)
+    logger.info("start here")
     output = joblib.Parallel(n_jobs=28)(
-        joblib.delayed(get_comparison)(c[0], c[1], year) for c in combinations[0:56])
-
+        joblib.delayed(get_comparison)(c[0], c[1], year) for c in combinations[0:])
 
     # output = [get_comparison(c[0], c[1], year) for c in combinations[0:3]]
+    logger.info("end here")
 
 
     print("elapsed time",time.perf_counter()-start)
