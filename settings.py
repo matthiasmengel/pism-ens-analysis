@@ -8,14 +8,14 @@ import pwd
 username = pwd.getpwuid(os.getuid()).pw_name
 
 is_pikcluster = False
-if username=="mengel":
+if username=="reese":
     is_pikcluster = True
     from pikcluster_settings import *
 else:
     from supermuc_settings import *
 
-ensemble_name = "dev_058_initmip4km_resoensemble4"
-grid_id = "initmip8km"
+#ensemble_name = "dev_058_initmip4km_resoensemble4"
+#grid_id = "initmip8km"
 
 
 #### No edits needed below that line. ####

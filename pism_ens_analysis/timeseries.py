@@ -3,7 +3,7 @@ import collections
 import numpy as np
 # import pandas as pd
 import netCDF4 as nc
-import dimarray as da
+#import dimarray as da
 import glob
 
 
@@ -57,7 +57,7 @@ def get_timeseries_data2(ensemble_members, ts_file_pattern="timeseries"):
             glob.glob(os.path.join(em,ts_file_pattern+".nc"))
 
         if available_ts_files == []:
-            print "no timeseries files available for", name, ", skip."
+            print("no timeseries files available for", name, ", skip.")
             continue
 
         for ts_file in available_ts_files:
@@ -98,7 +98,7 @@ def imshow_variable(fname,varname,**kwargs):
     try:
         ncf = nc.Dataset(ncfname,"r")
     except IOError as error:
-        print ncfname, "not found."
+        print(ncfname, "not found.")
         raise error
     plt.imshow(np.squeeze(ncf.variables[varname][0:150,0:150]),origin="lower",
                interpolation="nearest",**kwargs)
@@ -110,7 +110,7 @@ def contour_variable(fname,varname,**kwargs):
     try:
         ncf = nc.Dataset(ncfname,"r")
     except IOError as error:
-        print ncfname, "not found."
+        print(ncfname, "not found.")
         raise error
     plt.contour(np.squeeze(ncf.variables[varname][0:150,0:150]),origin="lower",
                interpolation="nearest",**kwargs)

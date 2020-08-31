@@ -16,7 +16,7 @@ def get_spatial_variable(fname,varname):
     try:
         ncf = nc.Dataset(fname,"r")
     except IOError as error:
-        print (fname, "not found.")
+        print(fname, "not found.")
         raise error
     return np.squeeze(ncf.variables[varname])
 
@@ -32,6 +32,20 @@ def get_spatial_variables(ncfile,variables):
     ncf.close()
 
     return nc_data
+
+
+def get_spatial_variables_lasttime(ncfile,variables):
+
+    """ get several variables at once """
+
+    ncf = nc.Dataset(ncfile,"r")
+    nc_data = {}
+    for var in variables:
+        nc_data[var] = np.squeeze(ncf.variables[var][-1,:,:])
+    ncf.close()
+
+    return nc_data
+
 
 
 def return_hashes_with_paramval(ensemble_table, param, value):
@@ -141,7 +155,7 @@ def get_sum_per_basin(field, basins, basin_range="all",
     return sum_per_basin
 
 
-def get_area_errors(pism_mask, bedm_mask):
+def get_area_errors(pism_mask, bedm_mask,resolution):
 
     """ find difference in areas of floating and observed,
         between pism_mask and bedm_mask.
@@ -169,11 +183,11 @@ def get_area_errors(pism_mask, bedm_mask):
     ad["grounded_now_not_in_obs"] = np.array(~(np.isclose(bedm_mask,0)) &
          (pism_mask ==2),dtype=np.float)
 
-    ad["floating_area_error"] = ad["floating_in_obs_now_not"] + \
-        ad["floating_now_not_in_obs"]
+    ad["floating_area_error"] = ad["floating_in_obs_now_not"]*resolution**2 + \
+        ad["floating_now_not_in_obs"]*resolution**2
 
-    ad["grounded_area_error"] = ad["grounded_in_obs_now_not"] + \
-        ad["grounded_now_not_in_obs"]
+    ad["grounded_area_error"] = ad["grounded_in_obs_now_not"]*resolution**2 + \
+        ad["grounded_now_not_in_obs"]*resolution**2
 
     return ad
 
@@ -208,7 +222,10 @@ def get_grounding_line_deviaton(pism_mask, distance_to_observed_gl, basins, basi
 
         # measure of grounding line deviation
         # square-root sum of distances divided by number of grounding line points
-        return np.sqrt((gldist**2.).sum())/(gldist > 0).sum()
+        #return np.sqrt((gldist**2.).sum())/(gldist > 0).sum()
+        #return np.sqrt( (gldist**2.).sum() / (gldist != 0).sum() )
+        return np.sqrt(gldist**2.).sum() / (gldist != 0).sum() 
+	
 
     gl_per_basin.loc["total"] = weighted_gl_devi(gldist)
 
@@ -332,7 +349,7 @@ def get_rms_for_experiments(varname, refncr, experiments, filepattern, mask_othe
     df_rms = pd.DataFrame()
 
     for exp in experiments:
-        print (exp)
+        print(exp)
 
         ncfiles = sorted(glob.glob(os.path.join(exp,filepattern)))
 
@@ -342,10 +359,10 @@ def get_rms_for_experiments(varname, refncr, experiments, filepattern, mask_othe
             rms_error = get_rms_error_in_basin(varname, mask_other_basins, expncr, refncr, spatial=False)
             expncr.close()
             yr = fl.split("extra_")[1][0:4]
-            print (yr),
+            print(yr),
             df_rms.loc[int(yr),exp.split("/")[-1]] = rms_error["rms_"+varname]
 
-        print ("")
+        print("")
 
     return df_rms
 
@@ -457,7 +474,7 @@ def collect_scores(ensemble_members, varnames_for_rms,
 
     for em in ensemble_members:
         run = em.split("/")[-1]
-        print (run,)
+        print(run,)
 
         if fixed_analysis_year != None:
             ncr = nc.Dataset(os.path.join(em,"snapshots_"+str(fixed_analysis_year)+".000.nc"),"r")
