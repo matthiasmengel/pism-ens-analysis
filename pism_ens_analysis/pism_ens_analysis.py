@@ -65,8 +65,8 @@ def get_reference_data(input_root_dir, grid_id):
         uses standard file structure from github.com/pism/pism-ais
 
     """
-    rignot_vel_file = os.path.join(input_root_dir,"rignotvel","rignotvel_"+grid_id+".nc")
-    bedmap2_file = os.path.join(input_root_dir,"bedmap2","bedmap2_"+grid_id+".nc")
+    rignot_vel_file = os.path.join(input_root_dir,"mouginot_rignot19","mouginot_rignot19_"+grid_id+".nc") #"rignotvel","rignotvel_"+grid_id+".nc")
+    bedmap2_file = os.path.join(input_root_dir,"bedmachine", "bedmachine_"+grid_id+".nc") #"bedmap2","bedmap2_"+grid_id+".nc")
     zwally_basin_file = os.path.join(input_root_dir,"zwally_basins","zwally_basins_"+grid_id+".nc")
 
     rignc = nc.Dataset(rignot_vel_file,"r")
@@ -74,8 +74,8 @@ def get_reference_data(input_root_dir, grid_id):
     zwallync = nc.Dataset(zwally_basin_file,"r")
 
     bedm_mask = bedmnc.variables["mask"][:]
-    bedm_thk = bedmnc.variables["thk"][:]
-    bedm_thk_grounded = np.ma.array(bedm_thk,mask=bedm_mask!=0)
+    bedm_thk = bedmnc.variables["thickness"][:]#["thk"][:]
+    bedm_thk_grounded = np.ma.array(bedm_thk,mask=bedm_mask!=2)
 
     basins = zwallync.variables["basins"][:]
 
@@ -166,21 +166,21 @@ def get_area_errors(pism_mask, bedm_mask,resolution):
         mask=3 is floating ice,
         mask=4 is ocean.
         in bedm_mask:
-        mask=2 is ocean
-        mask=1 is floating ice
-        mask=0 is grounded ice
+        mask=0 is ocean
+        mask=3 is floating ice
+        mask=2 is grounded ice
         """
 
     ad = collections.OrderedDict()
 
-    ad["floating_in_obs_now_not"] = np.array((np.isclose(bedm_mask,1)) &
+    ad["floating_in_obs_now_not"] = np.array((np.isclose(bedm_mask,3)) &
         (pism_mask !=3),dtype=np.float)
-    ad["floating_now_not_in_obs"] = np.array(~(np.isclose(bedm_mask,1)) &
+    ad["floating_now_not_in_obs"] = np.array(~(np.isclose(bedm_mask,3)) &
         (pism_mask ==3),dtype=np.float)
 
-    ad["grounded_in_obs_now_not"] = np.array((np.isclose(bedm_mask,0)) &
+    ad["grounded_in_obs_now_not"] = np.array((np.isclose(bedm_mask,2)) &
          (pism_mask !=2),dtype=np.float)
-    ad["grounded_now_not_in_obs"] = np.array(~(np.isclose(bedm_mask,0)) &
+    ad["grounded_now_not_in_obs"] = np.array(~(np.isclose(bedm_mask,2)) &
          (pism_mask ==2),dtype=np.float)
 
     ad["floating_area_error"] = ad["floating_in_obs_now_not"]*resolution**2 + \
@@ -244,8 +244,13 @@ def get_distance_to_observed_gl(bedm_mask, resolution):
 
     # format observation mask
     glmaskobs = bedm_mask.copy()
-    glmaskobs[glmaskobs <= 0] = -1
-    glmaskobs[glmaskobs > 0] = 1
+    glmaskobs[glmaskobs <= 0.5] = -1
+    glmaskobs[np.logical_and(glmaskobs >=2.5, glmaskobs <=3.5)] = -1
+    glmaskobs[np.logical_and(glmaskobs >=1.5, glmaskobs <=2.5)] = 1
+    glmaskobs[np.logical_and(glmaskobs >=0.5, glmaskobs <=1.5)] = 1
+    #glmaskobs[glmaskobs > 0] = 1
+    glmaskobs[glmaskobs == 2] = 1
+    glmaskobs[glmaskobs >= 3.5] = 1
     # calculate distance to the grounding line
     # skffm calculates distance to the zero contour line
     distanceobs = skfmm.distance(glmaskobs)*resolution #km
